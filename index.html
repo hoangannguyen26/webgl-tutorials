@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebGL Tutorial</title>
+</head>
+<script src="utils/ShaderUtils.js"></script>
+<script src="utils/matrix.js"></script>
+<script>
+    function onLoaded() {
+        const canvas = document.getElementById("webGL-canvas");
+        const gl = canvas.getContext("webgl");
+        if(gl === null) {
+            alert("Your browser doesn't support WebGL");
+            return;
+        }
+        console.log(gl.getParameter(gl.VERSION));
+        console.log(gl.getParameter(gl.SHADING_LANGUAGE_VERSION));
+        console.log(gl.getParameter(gl.VENDOR));
+        
+        // Shader source
+        const vsSource = `
+
+            attribute vec3 aVertexPosition;
+            attribute vec4 aVertexColor;
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+
+            varying mediump vec4 vVertexColor;
+
+            void main(void)
+            {
+                gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
+                vVertexColor = aVertexColor;
+            }
+        `;
+
+        const fsSource = `
+            varying mediump vec4 vVertexColor;
+            void main(void)
+            {
+                gl_FragColor = vVertexColor;
+            }
+        `;
+        // Create shader programe    
+        const shaderProgram = ShaderUtils.initShaderPrograme(gl, vsSource, fsSource);
+        const programInfo = {
+            shaderProgram: shaderProgram,
+            attributeLocations:
+            {
+                vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+                vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
+            },
+            uniformLocations:
+            {
+                modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+                projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
+            }
+        };
+        const cameraConfig = {
+            fov : 45,
+            aspect : gl.canvas.clientWidth/gl.canvas.clientHeight,
+            near: 1,
+            far: 500
+        };
+        
+        // Create vertex buffer
+        const buffers = initBuffer(gl);
+        
+        function render() {
+            drawScene(gl, buffers, programInfo, cameraConfig);
+            requestAnimationFrame(render);
+        }
+        requestAnimationFrame(render);
+    }
+    function initBuffer(gl) {
+        
+        const vertices = [
+            // 0.0,  1.0,  0.0,
+            // -1.0, -1.0,  0.0,
+            // 1.0, -1.0,  0.0,
+            
+            0.0,  1.0,  0.0, 1.0, 0.0, 0.0, 1.0,
+            -1.0, -1.0,  0.0, 0.0, 1.0, 0.0, 1.0,
+            1.0, -1.0,  0.0, 0.0, 0.0, 1.0, 1.0,
+        ];
+
+        var vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        vertexBuffer.componentSize = 3;
+        vertexBuffer.stride = 28; // size of vertex data include all attribute (position, normal, color)
+        vertexBuffer.offset = 0; // Offset in byte = index * bytePerComponent (size of float)
+        vertexBuffer.colorComponentSize = 4;
+        vertexBuffer.colorOffset = 12; // Offset in byte = index * bytePerComponent (size of float)
+        return {
+            vertexBuffer: vertexBuffer
+        };
+    }
+
+    function drawScene(gl, buffers, programInfo, cameraConfig) {
+        // clear color, buffers
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clearDepth(1.0);
+        gl.enable(gl.DEPTH_TEST);
+        gl.depthFunc(gl.LEQUAL);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        //Setup the projectionMatrix and modelView Matrix
+        const projectionMatrix = mat4.create();
+        mat4.perspective(
+            projectionMatrix, 
+            cameraConfig.fov, 
+            cameraConfig.aspect, 
+            cameraConfig.near, 
+            cameraConfig.far
+        );
+        
+        const modelViewMatrix = mat4.create();
+        mat4.identity(modelViewMatrix);
+        mat4.translate(modelViewMatrix, modelViewMatrix, [-0.0, 0.0, -6.0]);
+
+        gl.useProgram(programInfo.shaderProgram);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertexBuffer);
+
+        if(programInfo.attributeLocations.vertexPosition != -1)
+        {
+            gl.vertexAttribPointer(
+                programInfo.attributeLocations.vertexPosition, 
+                buffers.vertexBuffer.componentSize, 
+                gl.FLOAT, 
+                false, 
+                buffers.vertexBuffer.stride, 
+                buffers.vertexBuffer.offset
+            );
+            gl.enableVertexAttribArray(programInfo.attributeLocations.vertexPosition);
+        }
+        if(programInfo.attributeLocations.vertexColor != -1)
+        {
+            gl.vertexAttribPointer(
+                programInfo.attributeLocations.vertexColor, 
+                buffers.vertexBuffer.colorComponentSize, 
+                gl.FLOAT, 
+                false, 
+                buffers.vertexBuffer.stride, 
+                buffers.vertexBuffer.colorOffset
+            );
+            gl.enableVertexAttribArray(programInfo.attributeLocations.vertexColor);
+        }
+        if(programInfo.uniformLocations.modelViewMatrix != 1)
+        {
+            gl.uniformMatrix4fv(
+                programInfo.uniformLocations.modelViewMatrix,
+                false,
+                modelViewMatrix
+            );
+        }
+        if(programInfo.uniformLocations.projectionMatrix != 1)
+        {
+            gl.uniformMatrix4fv(
+                programInfo.uniformLocations.projectionMatrix,
+                false,
+                projectionMatrix
+            );
+        }
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 3);
+
+
+    }
+
+</script>
+
+<body onload="onLoaded();">
+    <canvas id="webGL-canvas" width="500" height="500"></canvas>
+</body>
