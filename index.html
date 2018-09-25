@@ -21,25 +21,22 @@
         const vsSource = `
 
             attribute vec3 aVertexPosition;
-            attribute vec4 aVertexColor;
 
             uniform mat4 uModelViewMatrix;
             uniform mat4 uProjectionMatrix;
 
-            varying mediump vec4 vVertexColor;
 
             void main(void)
             {
                 gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
-                vVertexColor = aVertexColor;
             }
         `;
 
         const fsSource = `
-            varying mediump vec4 vVertexColor;
+
             void main(void)
             {
-                gl_FragColor = vVertexColor;
+                gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
             }
         `;
         // Create shader programe    
@@ -49,7 +46,6 @@
             attributeLocations:
             {
                 vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
-                vertexColor: gl.getAttribLocation(shaderProgram, "aVertexColor"),
             },
             uniformLocations:
             {
@@ -76,23 +72,17 @@
     function initBuffer(gl) {
         
         const vertices = [
-            // 0.0,  1.0,  0.0,
-            // -1.0, -1.0,  0.0,
-            // 1.0, -1.0,  0.0,
-            
-            0.0,  1.0,  0.0, 1.0, 0.0, 0.0, 1.0,
-            -1.0, -1.0,  0.0, 0.0, 1.0, 0.0, 1.0,
-            1.0, -1.0,  0.0, 0.0, 0.0, 1.0, 1.0,
+            0.0,  1.0,  0.0,
+            -1.0, -1.0,  0.0,
+            1.0, -1.0,  0.0,
         ];
 
         var vertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
         vertexBuffer.componentSize = 3;
-        vertexBuffer.stride = 28; // size of vertex data include all attribute (position, normal, color)
+        vertexBuffer.stride = 12; // size of vertex data include all attribute (position, normal, color)
         vertexBuffer.offset = 0; // Offset in byte = index * bytePerComponent (size of float)
-        vertexBuffer.colorComponentSize = 4;
-        vertexBuffer.colorOffset = 12; // Offset in byte = index * bytePerComponent (size of float)
         return {
             vertexBuffer: vertexBuffer
         };
@@ -135,18 +125,6 @@
                 buffers.vertexBuffer.offset
             );
             gl.enableVertexAttribArray(programInfo.attributeLocations.vertexPosition);
-        }
-        if(programInfo.attributeLocations.vertexColor != -1)
-        {
-            gl.vertexAttribPointer(
-                programInfo.attributeLocations.vertexColor, 
-                buffers.vertexBuffer.colorComponentSize, 
-                gl.FLOAT, 
-                false, 
-                buffers.vertexBuffer.stride, 
-                buffers.vertexBuffer.colorOffset
-            );
-            gl.enableVertexAttribArray(programInfo.attributeLocations.vertexColor);
         }
         if(programInfo.uniformLocations.modelViewMatrix != 1)
         {
